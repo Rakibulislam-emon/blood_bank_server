@@ -26,10 +26,40 @@ async function run() {
     const divisionCollections = client.db('bloodBank').collection('division')
     const upozilaCollections = client.db('bloodBank').collection('upozila')
     const usersCollections = client.db('bloodBank').collection('users')
+    const bloodRequestCollections =client.db('bloodBank').collection('bloodRequests')
 
+      // ---------------- insert requests in bloodCollection ----------------
+       app.post('/bloodRequests', async (req, res) => {
+        try {
+          const result = await bloodRequestCollections.insertOne(req.body);
+          res.send(result);
+        } catch (error) {
+          console.error("Error inserting user data:", error);
+          res.status(500).send("Error inserting user data");
+        }
+      });
 
+      app.get('/bloodRequests', async (req, res)=>{
+        try {
+          const result = await bloodRequestCollections.find().toArray();
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          res.status(500).send("Error fetching user data");
+        }
+      })
 
-
+    // ---------------- get bloodRequestedData by email----------------
+      app.get('/myBloodRequests/:email', async (req, res) => {
+        try {
+          const result = await bloodRequestCollections.find({requesterEmail: req.params.email}).toArray();
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          res.status(500).send("Error fetching user data");
+        }
+      });
+   
 
     // ---------------- geo code : 1 get divisions ----------------
     app.get('/divisions',async (req, res) => {
@@ -65,6 +95,32 @@ async function run() {
           }
         });
   
+    // ---------------- get users data by email ----------------
+    app.get('/profile/:email', async (req, res) => {
+        try {
+          const result = await usersCollections.findOne({ email: req.params.email });
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          res.status(500).send("Error fetching user data");
+        }
+      });
+    // ---------------- update user with email ----------------
+      app.patch('/profile-update/:email', async (req, res) => {
+        try {
+          const options = { upsert: true }
+          const result = await usersCollections.updateOne(
+            { email: req.params.email },
+            { $set: req.body },
+            { upsert: true }
+          );
+          res.send(result);
+        } catch (error) {
+          console.error("Error updating user data:", error);
+          res.status(500).send("Error updating user data");
+        }
+      });
+    // ---------------- delete user with email ----------------
 
 
     // Send a ping to confirm a successful connection
