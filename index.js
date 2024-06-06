@@ -57,6 +57,17 @@ async function run() {
         res.status(500).send("Error fetching user data");
       }
     });
+    // insert a new blog 
+      app.post('/blogs', async (req, res) => {
+        try {
+          const result = await blogCollections.insertOne(req.body);
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          res.status(500).send("Error fetching user data");
+        }
+      });
+    //  ------  delete a blog by id -------
 
     // ------------ publish a blog by updating stats --------------------
     app.patch('/publish-blogs/:id', async (req, res) => {
@@ -86,7 +97,18 @@ async function run() {
           res.status(500).send("Error fetching user data");
         }
       });
-    //  ------ 2 update a status in userCollection by id -------
+    //  ------ get blogs by id -------
+      app.get('/getBlogs/:id', async (req, res) => {
+        try {
+          console.log(req.params.id ,'---------->>>>>> 103');
+          const result = await blogCollections.findOne({ _id: new ObjectId(req.params.id) });
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          res.status(500).send("Error fetching user data");
+        }
+      });
+    //  ------ get blogs by id -------
 
 
 
@@ -222,6 +244,32 @@ async function run() {
       } catch (error) {
         console.error("Error fetching user data:", error);
         res.status(500).send("Error fetching user data");
+      }
+    });
+
+    // ---------------- get bloodRequestedData by id----------------
+    app.get('/usersBloodRequests/:id', async (req, res) => {
+      try {
+        const result = await bloodRequestCollections.find({ _id: new ObjectId(req.params.id) }).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).send("Error fetching user data");
+      }
+    });
+
+    // patch bloodRequestCollections status by id 
+     app.patch('/usersBloodRequests/:id', async (req, res) => {
+      try {
+        const result = await bloodRequestCollections.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: req.body },
+          { upsert: true }
+        );
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating user data:", error);
+        res.status(500).send("Error updating user data");
       }
     });
 
