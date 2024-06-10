@@ -1,10 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 const app = express();
 app.use(cors());
 app.use(express.json());
+// const cookieParser = require('cookie-parser');
+// const jwt = require('jsonwebtoken')
+// const corsOptions = {
+
+// app.use(cors(corsOptions))
 // mongodb starts from here
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -28,11 +34,93 @@ async function run() {
     const usersCollections = client.db('bloodBank').collection('users')
     const bloodRequestCollections = client.db('bloodBank').collection('bloodRequests')
     const blogCollections = client.db('bloodBank').collection('blogs')
+    const donationCollections = client.db('bloodBank').collection('donations')
+    // jwt 
+
+    // app.post('/jwt', async (req, res) => {
+    //   const user = req.body;
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+    //   res.send({ token });
+    // })
+
+
+    // post donation in db
+     app.post('/donations', async (req, res) => {
+      try {
+        const result = await donationCollections.insertOne(req.body);
+        console.log('Query Result:', result); // Log query result
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send(error);
+      }
+    })
+
+    // get the total donation 
+     app.get('/donations', async (req, res) => {
+      try {
+        const result = await donationCollections.find().toArray();
+        
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).send(error);
+      }
+    })
+
+
+    // stripe payment routes 
+    app.post('/create-payment-intent', async function (req, res) {
+      console.log(req.body, '35 line');
+
+      const { price } = req.body
+      const amount = parseInt(price * 100)
+      console.log('amount:', amount)
+      // return
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+
+    // search route for finding donor by query in users collection
+    app.get('/donors', async (req, res) => {
+      try {
+        let { bloodGroup, district, upazila } = req.query;
+        const check = bloodGroup.split('')
+        console.log('check:', check)
+        if (check[check.length - 1] === ' ') {
+          check[check.length - 1] = '+',
+            bloodGroup = check.join('')
+        }
+
+        // console.log('Query Parameters:', req.query); // Log query parameters
+        const result = await usersCollections.find({
+          bloodGroup: bloodGroup || { $ne: null },
+          district: district || { $ne: null },
+          upazila: upazila || { $ne: null }
+        }).toArray();
+        console.log('Query Result:', result); // Log query result
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).send("Error fetching user data");
+      }
+    });
+
+
+
+
 
     //  ------------- admins routes -------------
 
     // update status in blood collection by admin 
-     app.patch('/updateStatus/:id', async (req, res) => {
+    app.patch('/updateStatus/:id', async (req, res) => {
       try {
         const result = await bloodRequestCollections.updateOne(
           { _id: new ObjectId(req.params.id) },
@@ -50,7 +138,7 @@ async function run() {
     app.get('/blogs', async (req, res) => {
       try {
         const result = await blogCollections.find().toArray();
-        
+
         res.send(result);
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -58,22 +146,22 @@ async function run() {
       }
     });
     // insert a new blog 
-      app.post('/blogs', async (req, res) => {
-        try {
-          const result = await blogCollections.insertOne(req.body);
-          res.send(result);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          res.status(500).send("Error fetching user data");
-        }
-      });
+    app.post('/blogs', async (req, res) => {
+      try {
+        const result = await blogCollections.insertOne(req.body);
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).send("Error fetching user data");
+      }
+    });
     //  ------  delete a blog by id -------
 
     // ------------ publish a blog by updating stats --------------------
     app.patch('/publish-blogs/:id', async (req, res) => {
       try {
         // upsert true
-         
+
         const result = await blogCollections.updateOne(
           { _id: new ObjectId(req.params.id) },
           { $set: req.body },
@@ -86,41 +174,41 @@ async function run() {
       }
     });
     //  ------  delete a blog by id -------
-      app.delete('/delete-blogs/:id', async (req, res) => {
-        try {
-          const result = await blogCollections.deleteOne(
-            { _id: new ObjectId(req.params.id) }
-          );
-          res.send(result);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          res.status(500).send("Error fetching user data");
-        }
-      });
+    app.delete('/delete-blogs/:id', async (req, res) => {
+      try {
+        const result = await blogCollections.deleteOne(
+          { _id: new ObjectId(req.params.id) }
+        );
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).send("Error fetching user data");
+      }
+    });
     //  ------ get blogs by id -------
-      app.get('/getBlogs/:id', async (req, res) => {
-        try {
-          console.log(req.params.id ,'---------->>>>>> 103');
-          const result = await blogCollections.findOne({ _id: new ObjectId(req.params.id) });
-          res.send(result);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          res.status(500).send("Error fetching user data");
-        }
-      });
+    app.get('/getBlogs/:id', async (req, res) => {
+      try {
+        console.log(req.params.id, '---------->>>>>> 103');
+        const result = await blogCollections.findOne({ _id: new ObjectId(req.params.id) });
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        res.status(500).send("Error fetching user data");
+      }
+    });
     //  ------ get blogs by id -------
 
 
 
-    
+
     // --------------get  all users--------- 
     // app.get('/allUsers', async (req, res) => {
     //   try {
     //     const result = await usersCollections.find().toArray();
-    //     console.log(result);
+        // console.log(result);
     //     res.send(result);
     //   } catch (error) {
-    //     console.error("Error fetching user data:", error);
+        // console.error("Error fetching user data:", error);
     //     res.status(500).send("Error fetching user data");
     //   }
     // });
@@ -138,41 +226,41 @@ async function run() {
       }
     });
     //  ------ 2 update a status in userCollection by id -------
-      app.patch('/userStatus/:id', async (req, res) => {
-        try {
-          console.log(req.params.id ,'-----> 47');
+    app.patch('/userStatus/:id', async (req, res) => {
+      try {
+        console.log(req.params.id, '-----> 47');
+        const result = await usersCollections.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: req.body }
+        );
+        res.send(result);
+
+      } catch (error) {
+        console.error("Error updating user data:", error);
+        res.status(500).send("Error updating user data");
+      }
+    });
+    //  ------ 3 update a role in userCollection by id -------
+    app.patch('/userRole/:id', async (req, res) => {
+      try {
+        console.log(req.params.id, '-----> 47');
+        // check user role in db
+        const user = await usersCollections.findOne({ _id: new ObjectId(req.params.id) });
+        console.log(user.role);
+        if (user.role !== 'admin') {
+
           const result = await usersCollections.updateOne(
             { _id: new ObjectId(req.params.id) },
             { $set: req.body }
           );
           res.send(result);
-          
-        } catch (error) {
-          console.error("Error updating user data:", error);
-          res.status(500).send("Error updating user data");
         }
-      });
-    //  ------ 3 update a role in userCollection by id -------
-      app.patch('/userRole/:id', async (req, res) => {
-        try {
-          console.log(req.params.id ,'-----> 47');
-          // check user role in db
-          const user = await usersCollections.findOne({ _id: new ObjectId(req.params.id) });
-          console.log(user.role);
-          if (user.role !== 'admin') {
-           
-            const result = await usersCollections.updateOne(
-              { _id: new ObjectId(req.params.id) },
-              { $set: req.body }
-            );
-            res.send(result);
-          } 
 
-        } catch (error) {
-          console.error("Error updating user data:", error);
-          res.status(500).send("Error updating user data");
-        }
-      });
+      } catch (error) {
+        console.error("Error updating user data:", error);
+        res.status(500).send("Error updating user data");
+      }
+    });
     //  ------ 4 delete a user by id -------
 
 
@@ -200,7 +288,7 @@ async function run() {
       }
     });
 
-    
+
 
     // ---------------- get requested donation by id----------------
     app.get('/edit/:id', async (req, res) => {
@@ -217,7 +305,7 @@ async function run() {
     // ---------------- insert requests in bloodCollection ----------------
     app.post('/bloodRequests/:email', async (req, res) => {
       try {
-    
+
         const result = await bloodRequestCollections.insertOne(req.body);
         res.send(result);
       } catch (error) {
@@ -259,7 +347,7 @@ async function run() {
     });
 
     // patch bloodRequestCollections status by id 
-     app.patch('/usersBloodRequests/:id', async (req, res) => {
+    app.patch('/usersBloodRequests/:id', async (req, res) => {
       try {
         const result = await bloodRequestCollections.updateOne(
           { _id: new ObjectId(req.params.id) },
