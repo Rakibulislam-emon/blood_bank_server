@@ -6,12 +6,6 @@ const port = process.env.PORT || 5000;
 const app = express();
 app.use(cors());
 app.use(express.json());
-// const cookieParser = require('cookie-parser');
-// const jwt = require('jsonwebtoken')
-// const corsOptions = {
-
-// app.use(cors(corsOptions))
-// mongodb starts from here
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.zuuvjs1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -42,7 +36,9 @@ async function run() {
     //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
     //   res.send({ token });
     // })
-
+  
+    // get date by get method 
+     
 
     // post donation in db
      app.post('/donations', async (req, res) => {
