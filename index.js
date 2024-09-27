@@ -454,7 +454,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', async (req, res) => {
-  res.send(`Server is running at http://localhost:${port}`);
+  res.send(`Server is good running at http://localhost:${port}`);
 })
 app.listen(port, (req, res) => {
   console.log(`Server is running on port ${port}`);
