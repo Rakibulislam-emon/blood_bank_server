@@ -208,7 +208,7 @@ async function run() {
     //     res.status(500).send("Error fetching user data");
     //   }
     // });
-    //  ------ 1 -------
+  //  test 
 
     //  ------ 1 -------
     app.get('/allUsers', async (req, res) => {
